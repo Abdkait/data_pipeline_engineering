@@ -1,4 +1,4 @@
-.PHONY: up down setup-topics produce-laws produce-courts produce-revisions produce-events run-law-processor run-court-processor run-revision-processor run-indexer run-notifier run-analytics test
+.PHONY: up down setup-topics produce-laws produce-courts produce-revisions produce-events run-law-processor run-court-processor run-revision-processor run-indexer run-notifier run-analytics test wait-kafka setup
 
 up:
 	docker-compose up -d
@@ -6,8 +6,13 @@ up:
 down:
 	docker-compose down -v
 
+wait-kafka:
+	python wait_for_kafka.py
+
 setup-topics:
 	python setup_topics.py
+
+setup: wait-kafka setup-topics
 
 produce-laws:
 	python producers/law_producer.py

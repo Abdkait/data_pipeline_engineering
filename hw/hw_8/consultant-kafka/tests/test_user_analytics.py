@@ -38,7 +38,10 @@ def test_user_analytics():
     doc_views = defaultdict(int)
     start_time = time.time()
     
-    while len(doc_views) < 2 and (time.time() - start_time) < 10:
+    received_test_events = 0
+    
+    # Ждем пока не получим все 5 отправленных тестовых событий
+    while received_test_events < 5 and (time.time() - start_time) < 15:
         msg = consumer.poll(1.0)
         if msg is None:
             continue
@@ -47,10 +50,13 @@ def test_user_analytics():
             
         data = json.loads(msg.value().decode('utf-8'))
         if data.get("document_id", "").startswith(test_prefix):
+            received_test_events += 1
             if data.get("event_type") == "view":
                 doc_views[data.get("document_id")] += 1
                 
     consumer.close()
+    
+    assert received_test_events == 5, f"Ожидалось 5 тестовых событий, получено: {received_test_events}"
     
     # doc1 должен иметь 3 просмотра, doc2 - 1 просмотр, doc3 (search) - 0
     assert doc_views[f"{test_prefix}-doc1"] == 3, f"Ожидалось 3 просмотра для doc1, получено: {doc_views[f'{test_prefix}-doc1']}"

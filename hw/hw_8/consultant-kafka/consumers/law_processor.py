@@ -35,10 +35,10 @@ def process_law(law_data):
         "processed_at": datetime.now().isoformat()
     }
 
-def consume_and_process():
+def consume_and_process(stop_event=None, group_id=None):
     consumer_conf = {
         'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
-        'group.id': GROUP_ID,
+        'group.id': group_id or GROUP_ID,
         'auto.offset.reset': 'earliest'
     }
     consumer = Consumer(consumer_conf)
@@ -50,10 +50,11 @@ def consume_and_process():
     }
     producer = Producer(producer_conf)
 
-    print(f"Запуск Law Processor (группа: {GROUP_ID}). Ожидание сообщений...")
+    actual_group = group_id or GROUP_ID
+    print(f"Запуск Law Processor (группа: {actual_group}). Ожидание сообщений...")
 
     try:
-        while True:
+        while not (stop_event and stop_event.is_set()):
             msg = consumer.poll(1.0)
             if msg is None:
                 continue
