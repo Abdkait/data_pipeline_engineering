@@ -1,0 +1,72 @@
+graph TD
+    classDef source fill:#e1f5fe,stroke:#3182ce,stroke-width:2px,color:#000
+    classDef producer fill:#fff3e0,stroke:#0288d1,stroke-width:2px,color:#000
+    classDef topic fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px,color:#000
+    classDef consumer fill:#e8f5e9,stroke:#6a1b9a,stroke-width:2px,color:#000
+    classDef database fill:#fff8e1,stroke:#f57c00,stroke-width:2px,color:#000
+
+    subgraph Sources ["Источники данных"]
+        S1[Парсеры сайтов ГД]:::source
+        S2[ГАС Правосудие / КАД Арбитр]:::source
+        S3[Внутренние редакторы]:::source
+        S4[Веб-приложение]:::source
+    end
+
+    subgraph Producers ["Producers"]
+        P1[Law Producer<br/>acks=all]:::producer
+        P2[Court Producer<br/>acks=all]:::producer
+        P3[Revision Producer<br/>acks=all]:::producer
+        P4[User Event Producer<br/>acks=1]:::producer
+    end
+
+    S1 --> P1
+    S2 --> P2
+    S3 --> P3
+    S4 --> P4
+
+    subgraph Kafka ["Kafka Broker"]
+        T1[("laws<br/>Part: 3 | Key: doc_id<br/>delete, 30d")]:::topic
+        T2[("court-decisions<br/>Part: 6 | Key: court_id<br/>delete, 14d")]:::topic
+        T3[("revisions<br/>Part: 3 | Key: doc_id<br/>compact")]:::topic
+        T4[("user-events<br/>Part: 3 | Key: user_id<br/>delete, 7d")]:::topic
+        T5[("processed-documents<br/>Part: 6 | Key: doc_id<br/>compact")]:::topic
+    end
+
+    P1 -->|doc_id| T1
+    P2 -->|court_id| T2
+    P3 -->|doc_id| T3
+    P4 -->|user_id| T4
+
+    subgraph Processors ["Processors (consumer → producer)"]
+        C1[Law Processor<br/>cg-laws-processor]:::consumer
+        C2[Court Processor<br/>cg-court-processor]:::consumer
+        C3[Revision Processor<br/>cg-revision-processor]:::consumer
+    end
+
+    T1 --> C1
+    T2 --> C2
+    T3 --> C3
+
+    C1 -->|doc_id| T5
+    C2 -->|doc_id| T5
+    C3 -->|doc_id| T5
+
+    subgraph Consumers ["Конечные Consumers"]
+        C4[Search Indexer<br/>cg-search-indexer]:::consumer
+        C5[Notification Sender<br/>cg-notification-sender]:::consumer
+        C6[Analytics Consumer<br/>cg-analytics]:::consumer
+    end
+
+    T5 -->|Fan-out| C4
+    T5 -->|Fan-out| C5
+    T4 --> C6
+
+    subgraph Destinations ["Хранилища"]
+        D1[(Elasticsearch)]:::database
+        D2[Push / Email]:::database
+        D3[(Analytics Dashboard)]:::database
+    end
+
+    C4 --> D1
+    C5 --> D2
+    C6 --> D3
