@@ -1,0 +1,13 @@
+# Maven build output
+target/
+
+# Input dataset (provided by the course, ~10k files) — not versioned
+Data/
+
+# Local IDE files
+.idea/
+*.iml
+.DS_Store
+
+# Spark crc checksums in results
+**/.*.crc
